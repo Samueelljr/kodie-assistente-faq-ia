@@ -1,0 +1,174 @@
+{
+  "name": "Assistente FAQ Inteligente - KODIE",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "faq-duvidas",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "webhook-faq",
+      "name": "Webhook Receber Duvida",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 2,
+      "position": [240, 300]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "http://api:3000/api/faq",
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"cliente\": \"{{ $json.body.cliente || 'Cliente' }}\",\n  \"pergunta\": \"{{ $json.body.pergunta }}\"\n}",
+        "options": {}
+      },
+      "id": "http-gemini-faq",
+      "name": "API FAQ Gemini",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [480, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "cond-humano",
+              "leftValue": "={{ $json.precisa_humano }}",
+              "rightValue": false,
+              "operator": {
+                "type": "boolean",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "if-precisa-humano",
+      "name": "Respondido pela Base?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [720, 300]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "res-1",
+              "name": "status",
+              "value": "respondido_automaticamente",
+              "type": "string"
+            },
+            {
+              "id": "res-2",
+              "name": "tema",
+              "value": "={{ $json.tema }}",
+              "type": "string"
+            },
+            {
+              "id": "res-3",
+              "name": "mensagem_cliente",
+              "value": "={{ $json.resposta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-auto-resposta",
+      "name": "Enviar Resposta Automatica",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [980, 200]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "esc-1",
+              "name": "status",
+              "value": "encaminhado_atendente",
+              "type": "string"
+            },
+            {
+              "id": "esc-2",
+              "name": "cliente",
+              "value": "={{ $json.cliente }}",
+              "type": "string"
+            },
+            {
+              "id": "esc-3",
+              "name": "pergunta_original",
+              "value": "={{ $json.pergunta }}",
+              "type": "string"
+            },
+            {
+              "id": "esc-4",
+              "name": "mensagem_cliente",
+              "value": "={{ $json.resposta }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "set-transbordo",
+      "name": "Transbordo Atendimento Humano",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [980, 400]
+    }
+  ],
+  "connections": {
+    "Webhook Receber Duvida": {
+      "main": [
+        [
+          {
+            "node": "API FAQ Gemini",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API FAQ Gemini": {
+      "main": [
+        [
+          {
+            "node": "Respondido pela Base?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Respondido pela Base?": {
+      "main": [
+        [
+          {
+            "node": "Enviar Resposta Automatica",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Transbordo Atendimento Humano",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
